@@ -1,4 +1,4 @@
 all:
-	gcc -o exe main.c
+	gcc -o file main.c
 rm:
-	rm -rf *.o exe
+	rm -rf *.o file

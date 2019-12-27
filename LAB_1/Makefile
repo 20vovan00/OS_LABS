@@ -1,14 +1,4 @@
-CC=gcc
-CFLAGS=-c -Wall
-LDFLAGS=
-SOURCES=main.c
-OBJECTS=$(SOURCES:.c=.o)
-EXECUTABLE=proga
-
-all: $(SOURCES) $(EXECUTABLE)
-	
-$(EXECUTABLE): $(OBJECTS) 
-	$(CC) $(LDFLAGS) $(OBJECTS) -o $@
-
-.cpp.o:
-	$(CC) $(CFLAGS) $< -o $@
+all:
+	gcc -o exe main.c -g -D_POSIX_C_SOURCE -std=c11
+rm:
+	rm -rf *.o exe

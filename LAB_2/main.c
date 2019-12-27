@@ -1,81 +1,105 @@
 #include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <stdlib.h>
 #include <unistd.h>
-#include <malloc.h>
-#include <dirent.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <errno.h>
 #include <string.h>
-#include <time.h>
 
-void getmode(mode_t mode, char str[])
+
+int zero = 0;
+
+void pid_exiting()
 {
-    mode_t type = mode & S_IFMT;
+	printf("\nONEXIT: <%d> died \n", getpid());
+};
 
-    switch (type)
-    {
-        case S_IFREG:
-            str[0] = '-';
-            break;
-        case S_IFSOCK:
-            str[0] = 's';
-            break;
-        case S_IFLNK:
-            str[0] = 'l';
-            break;
-        case S_IFBLK:
-            str[0] = 'b';
-            break;
-        case S_IFDIR:
-            str[0] = 'd';
-            break;
-        case S_IFCHR:
-            str[0] = 'c';
-            break;
-        case S_IFIFO:
-            str[0] = 'p';
-    }
-    if ((mode & S_IRUSR) > 0) str[1] = 'r'; else str[1] = '-';
-    if ((mode & S_IWUSR) > 0) str[2] = 'w'; else str[2] = '-';
-    if ((mode & S_IXUSR) > 0) str[3] = 'x'; else str[3] = '-';
-    if ((mode & S_IRGRP) > 0) str[4] = 'r'; else str[4] = '-';
-    if ((mode & S_IWGRP) > 0) str[5] = 'w'; else str[5] = '-';
-    if ((mode & S_IXGRP) > 0) str[6] = 'x'; else str[6] = '-';
-    if ((mode & S_IROTH) > 0) str[7] = 'r'; else str[7] = '-';
-    if ((mode & S_IWOTH) > 0) str[8] = 'w'; else str[8] = '-';
-    if ((mode & S_IXOTH) > 0) str[9] = 'x'; else str[9] = '-';
-    str[10] = '\0';
-}
-
-int main(int argc, char* argv[])
+void child_pid_exiting()
 {
-    char  buf[400];
-    getwd(buf);
-    char cur[400];
-    struct stat st;
-    char str[11];
-    struct tm *time;
+	printf("\nONEXIT: <%d> died, his parent [%d]\n", getpid(), getppid());
+};
 
-    DIR *dir;
-    struct dirent *ent;
-    if ((dir = opendir (buf)) != NULL)
-    {
-        while ((ent = readdir (dir)) != NULL)
-        {
-            if (strcmp(ent->d_name, ".") != 0 && strcmp(ent->d_name, "..") != 0 && ent->d_name[0] != '.')
-            {
-                strcpy(cur, "\0");
-                strcat(cur, buf);
-                strcat(cur, "/");
-                strcat(cur, ent->d_name);
 
-                stat(cur, &st);
-                getmode(st.st_mode, str);
-                time = localtime(&st.st_mtime);
+void pidat_exit()
+{
+	printf("\nATEXIT: <%d> died\n",getpid());
+};
 
-                printf("%s %i.%i.%i %i:%i %s\n", str, time->tm_mday, time->tm_mon+1, time->tm_year+1900, time->tm_hour, time->tm_min, ent->d_name);
-            }
-        }
-        closedir(dir);
-    }
-    return 0;
+
+void pidat_exitchild()
+{
+	printf("\nATEXIT: <%d> died, parent [%d] -> trying to divide by a zero...\n",getpid(),getppid());
+	int no = 5/zero;
+	printf("divided!\n\n");
+};
+
+
+int main()
+{
+	pid_t pid;
+	int stat;	
+
+	atexit(pid_exiting);
+	atexit(pidat_exit);
+	pid = fork();
+	
+	switch(pid)
+	{
+
+		case -1 : exit(1);
+
+		case 0 : printf("I am %d and %d is my parent\n",getpid(),getppid());
+			atexit(child_pid_exiting);
+			return 0;
+		default : 
+			printf("I am the first Procces! %d. When my first child [%d] will die, I ll continiue my work\n ",getpid(), pid);
+			waitpid(pid,&stat,0);			
+			printf("Oh god, he died! Guess, I might create new one...\n");
+
+			pid = fork();
+
+			if(pid > 0)
+			{	
+				printf("waitting for %d\n",pid);
+				pid = waitpid(pid, &stat, 0);
+			
+				printf("Finally, my second child died. I am [%d] and child was [%d]\n",getpid(), pid);
+			} 
+
+			else if(pid == -1)
+				printf("err %s\n", strerror(errno));			
+			else {
+				atexit(pidat_exitchild);
+				return 0;
+				}
+	}
+
+
+	printf("\n\n\n dividing by a zero, then, creating some new forks\n");
+
+
+
+//	int a = 5/zero;
+
+	pid = fork();
+	if(!pid) atexit(pidat_exitchild);
+	
+
+	switch(pid)
+	{
+		case -1 : exit(1);
+		case 0 : printf("<%d>, parent is [%d], dividing by a zero...\n",getpid(),getppid());
+		atexit(pidat_exit);
+		atexit(child_pid_exiting);
+		int yes = -1 / zero;
+		break;
+		
+		default : 
+			waitpid(pid,&stat,0);
+			printf("%d is a parent of %d\n", getpid(), pid);
+			break;
+
+	}
+
+	return 0;
 }

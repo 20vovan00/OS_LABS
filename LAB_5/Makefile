@@ -1,4 +1,4 @@
 all:
-	gcc -o exe main.c -std=c11 -lpthread
+	gcc -o file main.c -std=c11 -lpthread
 rm:
-	rm -rf *.o exe
+	rm -rf *.o file
